@@ -1,0 +1,80 @@
+name: CI
+
+# Runs on every pull request to main
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # Job 1 - Test Python code
+  python-tests:
+    name: Python Tests
+    runs-on: ubuntu-latest  # runs on a fresh Ubuntu machine in GitHub
+
+    steps:
+      # Step 1 - Download your code onto the Ubuntu machine
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2 - Install Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Step 3 - Install your dependencies from requirements.txt
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      # Step 4 - Run your tests
+      - name: Run tests
+        run: |
+          pytest tests/
+
+# Job 2 - Terraform plan for dev
+  terraform-plan-dev:
+    name: Terraform Plan (dev)
+    runs-on: ubuntu-latest
+    needs: python-tests  # only runs if python tests pass
+
+    steps:
+      # Step 1 - Download your code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2 - Install Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # Step 3 - Configure AWS credentials from GitHub Secrets
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+     # Step 4 - Initialize Terraform (connects to S3 backend)
+      - name: Terraform Init
+        working-directory: infra/environments/dev
+        run: terraform init
+
+      # Step 5 - Check formatting
+      - name: Terraform Format Check
+        working-directory: infra/environments/dev
+        run: terraform fmt -check
+
+      # Step 6 - Validate the code
+      - name: Terraform Validate
+        working-directory: infra/environments/dev
+        run: terraform validate
+
+      # Step 7 - Show what will change (but don't apply anything)
+      - name: Terraform Plan
+        working-directory: infra/environments/dev
+        run: terraform plan
