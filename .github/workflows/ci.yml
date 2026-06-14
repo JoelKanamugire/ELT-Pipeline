@@ -61,20 +61,20 @@ jobs:
 
      # Step 4 - Initialize Terraform (connects to S3 backend)
       - name: Terraform Init
-        working-directory: infra/environments/dev
+        working-directory: terraform/environments/dev
         run: terraform init
 
       # Step 5 - Check formatting
       - name: Terraform Format Check
-        working-directory: infra/environments/dev
+        working-directory: terraform/environments/dev
         run: terraform fmt -check
 
       # Step 6 - Validate the code
       - name: Terraform Validate
-        working-directory: infra/environments/dev
+        working-directory: terraform/environments/dev
         run: terraform validate
 
       # Step 7 - Show what will change (but don't apply anything)
       - name: Terraform Plan
-        working-directory: infra/environments/dev
+        working-directory: terraform/environments/dev
         run: terraform plan
