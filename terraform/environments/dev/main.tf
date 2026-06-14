@@ -1,11 +1,11 @@
 # This is the backend config — tells Terraform to store state in S3
 terraform {
   backend "s3" {
-    bucket         = "datadevp-tfstate"        # the bucket we just created
-    key            = "dev/terraform.tfstate"   # path inside the bucket
+    bucket         = "datadevp-tfstate"      # the bucket we just created
+    key            = "dev/terraform.tfstate" # path inside the bucket
     region         = "us-east-2"
-    dynamodb_table = "datadevp-tfstate-lock"   # the lock table we created
-    encrypt        = true                       # encrypts the state file
+    dynamodb_table = "datadevp-tfstate-lock" # the lock table we created
+    encrypt        = true                    # encrypts the state file
   }
 
   required_providers {
@@ -25,7 +25,7 @@ provider "aws" {
 module "s3_lake" {
   source      = "../../modules/s3"
   env         = "dev"
-  bucket_name = "cwo-dev-lake"  
+  bucket_name = "cwo-dev-lake"
 
   tags = {
     Environment = "dev"
