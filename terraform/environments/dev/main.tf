@@ -23,9 +23,10 @@ provider "aws" {
 
 # Call our S3 data lake module
 module "s3_lake" {
-  source      = "../../modules/s3_lake"
+  source      = "../../modules/s3"
   env         = "dev"
-  bucket_name = "datadevp-dev-lake"
+  bucket_name = "cwo-dev-lake"  
+
   tags = {
     Environment = "dev"
     Project     = "datadevp"

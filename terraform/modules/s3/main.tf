@@ -1,6 +1,6 @@
 # Create the S3 data lake bucket
 resource "aws_s3_bucket" "lake" {
-  bucket = cwo-dev-lake
+  bucket = var.bucket_name
 
   tags = var.tags
 }
