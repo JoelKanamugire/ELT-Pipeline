@@ -16,15 +16,15 @@ jobs:
     steps:
       # Step 1 - Download your code
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Step 2 - Install Terraform
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       # Step 3 - Configure AWS credentials from GitHub Secrets
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -32,20 +32,20 @@ jobs:
 
       # Step 4 - Initialize Terraform
       - name: Terraform Init
-        working-directory: infra/environments/prod
+        working-directory: terraform/environments/prod
         run: terraform init
 
       # Step 5 - Validate
       - name: Terraform Validate
-        working-directory: infra/environments/prod
+        working-directory: terraform/environments/prod
         run: terraform validate
 
       # Step 6 - Plan first so you can see what will change
       - name: Terraform Plan
-        working-directory: infra/environments/prod
+        working-directory: terraform/environments/prod
         run: terraform plan
 
       # Step 7 - Actually apply the changes to prod
       - name: Terraform Apply
-        working-directory: infra/environments/prod
+        working-directory: terraform/environments/prod
         run: terraform apply -auto-approve
