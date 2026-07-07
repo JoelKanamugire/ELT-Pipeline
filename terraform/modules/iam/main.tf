@@ -38,7 +38,7 @@ resource "aws_iam_policy" "cwo_lake_access" {
         Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
         Resource = ["${var.bucket_arn}/*"]
       }
-      
+
     ]
   })
 }
