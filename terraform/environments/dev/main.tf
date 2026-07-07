@@ -18,7 +18,8 @@ terraform {
 
 # Tell Terraform which AWS region to use
 provider "aws" {
-  region = "us-east-2"
+  region  = "us-east-2"
+  profile = "cwo-admin"
 }
 
 # Call our S3 data lake module
@@ -31,4 +32,10 @@ module "s3_lake" {
     Environment = "dev"
     Project     = "datadevp"
   }
+}
+
+module "iam" {
+  source     = "../../modules/iam"
+  env        = "dev"
+  bucket_arn = module.s3_lake.bucket_arn
 }

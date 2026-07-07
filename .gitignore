@@ -1,4 +1,4 @@
-Terraform
+# Terraform
 **/.terraform/
 *.tfstate
 *.tfstate.backup
@@ -11,8 +11,7 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
-
-Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -28,22 +27,19 @@ htmlcov/
 venv/
 .venv/
 env/
-
-
-Environment & secrets
+# Environment & secrets
 .env
 .env.*
 !.env.example
-
-AWS
+# AWS
 .aws/
 *.pem
-VS Code
+# VS Code
 .vscode/
 *.code-workspace
-OS
+# OS
 .DS_Store
 Thumbs.db
-Logs
+# Logs
 *.log
 logs/
