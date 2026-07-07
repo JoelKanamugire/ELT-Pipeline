@@ -19,7 +19,6 @@ terraform {
 # Tell Terraform which AWS region to use
 provider "aws" {
   region  = "us-east-2"
-  profile = "cwo-admin"
 }
 
 # Call our S3 data lake module
