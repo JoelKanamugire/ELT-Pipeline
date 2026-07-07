@@ -82,3 +82,25 @@ resource "aws_iam_user_policy_attachment" "cicd_backend_access" {
   user       = data.aws_iam_user.cicd.user_name
   policy_arn = aws_iam_policy.terraform_backend_access.arn
 }
+
+resource "aws_iam_policy" "self_lookup" {
+  name        = "cwo-${var.env}-iam-self-lookup"
+  description = "Allows the CI/CD user to look up its own IAM user details"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "SelfGetUser"
+        Effect   = "Allow"
+        Action   = ["iam:GetUser"]
+        Resource = ["arn:aws:iam::625144383094:user/${var.cicd_user_name}"]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_user_policy_attachment" "cicd_self_lookup" {
+  user       = data.aws_iam_user.cicd.user_name
+  policy_arn = aws_iam_policy.self_lookup.arn
+}
