@@ -95,6 +95,12 @@ resource "aws_iam_policy" "self_lookup" {
         Effect   = "Allow"
         Action   = ["iam:GetUser"]
         Resource = ["arn:aws:iam::625144383094:user/${var.cicd_user_name}"]
+      }, 
+      {
+        Sid      = "ReadOwnPolicies"
+        Effect   = "Allow"
+        Action   = ["iam:GetPolicy", "iam:GetPolicyVersion", "iam:ListPolicyVersions"]
+        Resource = ["arn:aws:iam::625144383094:policy/cwo-*"]
       }
     ]
   })
