@@ -32,15 +32,6 @@ module "s3_lake" {
     Project     = "datadevp"
   }
 }
-# Read dev's state remotely, just to grab its bucket ARN — read-only, changes nothing in dev
-data "terraform_remote_state" "dev" {
-  backend = "s3"
-  config = {
-    bucket = "datadevp-tfstate"
-    key    = "dev/terraform.tfstate"
-    region = "us-east-2"
-  }
-}
 
 module "iam" {
   source     = "../../modules/iam"
