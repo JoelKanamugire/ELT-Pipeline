@@ -1,0 +1,45 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+**/.terraform.lock.hcl
+*.tfvars.backup
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+env/
+# Environment & secrets
+.env
+.env.*
+!.env.example
+# AWS
+.aws/
+*.pem
+# VS Code
+.vscode/
+*.code-workspace
+# OS
+.DS_Store
+Thumbs.db
+# Logs
+*.log
+logs/
