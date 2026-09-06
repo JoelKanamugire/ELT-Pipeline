@@ -27,6 +27,7 @@ htmlcov/
 venv/
 .venv/
 env/
+*.pyc
 # Environment & secrets
 .env
 .env.*
