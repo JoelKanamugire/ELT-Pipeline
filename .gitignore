@@ -43,3 +43,12 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Python environments
+.venv/
+.venv-broken/
+venv/
+vendor_py/
+# Generated data
+data/
+*.parquet
