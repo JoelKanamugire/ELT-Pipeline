@@ -2,11 +2,13 @@ import json
 import os
 from datetime import datetime, timezone
 from io import BytesIO
+from .table_config import TABLE_CONFIG
 
 import boto3
 import pandas as pd
 import pymysql
 from dotenv import load_dotenv
+import argparse
 
 
 load_dotenv()
@@ -18,12 +20,12 @@ WATERMARK_KEY = "control/watermarks/mysql/orders.json"
 
 
 
-def read_watermark() -> str:
+def read_watermark(watermark_key: str) -> str:
     s3_client = boto3.client("s3")
 
     response = s3_client.get_object(
         Bucket=S3_BUCKET,
-        Key=WATERMARK_KEY,
+        Key=watermark_key,
     )
 
     watermark_data = json.loads(
@@ -37,79 +39,104 @@ def read_watermark() -> str:
     return last_watermark
 
 
-def extract_incremental_orders(
-    last_watermark: str,
-) -> pd.DataFrame:
-    connection = pymysql.connect(
-        host=os.environ["MYSQL_HOST"],
-        port=int(os.getenv("MYSQL_PORT", "3306")),
-        user=os.environ["MYSQL_USER"],
-        password=os.environ["MYSQL_PASSWORD"],
-        database=os.environ["MYSQL_DATABASE"],
-        connect_timeout=10,
-        cursorclass=pymysql.cursors.DictCursor,
+def extract_table(config: dict, last_watermark: str | None = None,) -> pd.DataFrame:
+          
+     table_name = config["name"]
+     primary_key = config["primary_key"]
+     load_type = config["load_type"]
+     watermark_column = config["watermark_column"]
+
+     connection = pymysql.connect(
+         host=os.environ["MYSQL_HOST"],
+         port=int(os.getenv("MYSQL_PORT", "3306")),
+         user=os.environ["MYSQL_USER"],
+         password=os.environ["MYSQL_PASSWORD"],
+         database=os.environ["MYSQL_DATABASE"],
+         connect_timeout=10,
+         cursorclass=pymysql.cursors.DictCursor,
+
     )
-
-    try:
-        query = """
-            SELECT *
-            FROM orders
-            WHERE updated_at > %s
-            ORDER BY updated_at, order_id;
-        """
-        with connection.cursor() as cursor:
-               cursor.execute(query, (last_watermark,))
-               rows = cursor.fetchall()
-
-        orders_df = pd.DataFrame(rows)
-
-        print(f"Extracted {len(orders_df)} new or updated orders. "
-              )
-
-        return orders_df
+     try:
+         if load_type == "incremental":
+             if last_watermark is None:
+                 raise ValueError(
+                     f"A watermark is required for incremental table {table_name}."
+                 )
+             query = f"""
+                SELECT *
+                FROM `{table_name}`
+                WHERE `{watermark_column}` > %s
+                ORDER BY `{watermark_column}`, `{primary_key}` ;
+             """ 
+             params = (last_watermark,)
             
-
-    finally:
+         elif load_type == "full_snapshot":
+             query = f"""
+                SELECT *
+                FROM `{table_name}`
+                ORDER BY `{primary_key}`;
+             """
+             
+             params = ()
+        
+         else:
+             raise ValueError(f"Unsupported load type: {load_type}")
+         
+         with connection.cursor() as cursor:
+             cursor.execute(query, params)
+             rows = cursor.fetchall()
+        
+         dataframe = pd.DataFrame(rows) 
+         print(
+             f"Extracted {len(dataframe)} records "
+             f"from {table_name}. "
+         )
+         
+         return dataframe            
+     finally:
         connection.close()
 
-def convert_to_parquet(orders_df: pd.DataFrame, ) -> BytesIO:
+
+def convert_to_parquet(dataframe: pd.DataFrame, ) -> BytesIO:
           
           parquet_buffer = BytesIO()
 
-          orders_df.to_parquet(
+          dataframe.to_parquet(
                parquet_buffer, 
                engine="pyarrow", 
                index=False,
           )
 
           parquet_buffer.seek(0)
-          print(f"Converted {len(orders_df)} orders to "
+          print(f"Converted {len(dataframe)} records to "
                 f"{parquet_buffer.getbuffer().nbytes} Parquet bytes."
           )
           return parquet_buffer
     
-def upload_to_s3(parquet_buffer: BytesIO,) -> str:
-         s3_client = boto3.client("s3")
-         now = datetime.now(timezone.utc)
-
-         ingestion_date = now.strftime("%Y-%m-%d")
-         timestamp = now.strftime("%Y%m%dT%H%M%SZ")
-
-         s3_key = (
-              f"raw/mysql/orders/"
-              f"ingestion_date={ingestion_date}/"
-              f"orders_timestamp_{timestamp}.parquet"
-         )
-         s3_client.upload_fileobj(
-              parquet_buffer, 
-              S3_BUCKET, 
-              s3_key,
-         )
-
-         print(f"Uploaded to s3://{S3_BUCKET}/{s3_key}")
-
-         return s3_key
-
+def upload_to_s3(parquet_buffer: BytesIO, table_name:str, s3_prefix: str, ) -> str:
+    s3_client = boto3.client("s3")
+    now = datetime.now(timezone.utc)
+    
+    ingestion_date = now.strftime("%Y-%m-%d")
+    timestamp = now.strftime("%Y-%m-%dT%H-%M-%S-%f")
+    
+    s3_key = (
+        f"{s3_prefix}/"
+        f"ingestion_date = {ingestion_date}/"
+        f"{table_name}_{timestamp}.parquet"
+    )
+    parquet_buffer.seek(0)
+    
+    s3_client.upload_fileobj(
+        parquet_buffer, 
+        S3_BUCKET, 
+        s3_key,
+        )
+    print(f"Uploaded to s3://{S3_BUCKET}/{s3_key}")
+    
+    return s3_key
+    
+    
 
 def validate_uploaded_file(s3_key: str, expected_row_count: int, )-> None:
          s3_client = boto3.client("s3")
@@ -134,56 +161,96 @@ def validate_uploaded_file(s3_key: str, expected_row_count: int, )-> None:
                )
     
 def update_watermark(
-    new_watermark: str,
-) -> None:
+    table_name: str, 
+    watermark_key: str, 
+    new_watermark: str,) -> None:
+    
     s3_client = boto3.client("s3")
-
+    
     watermark_data = {
-        "table": "orders",
+        "table" : table_name,
         "last_successful_watermark": new_watermark,
     }
-
+    
     s3_client.put_object(
         Bucket=S3_BUCKET,
-        Key=WATERMARK_KEY,
+        Key =watermark_key,
         Body=json.dumps(watermark_data, indent=2),
-        ContentType="application/json",
+        ContentType = "application/json",    
     )
+    print(f"Watermark updated to : {new_watermark}")
+    
+    
+    
+def run_table(config: dict) -> None:
+    last_watermark = None
 
-    print(f"Watermark updated to: {new_watermark}")
+    if config["load_type"] == "incremental":
+        last_watermark = read_watermark(
+            watermark_key=config["watermark_key"],
+        )
 
-def main() -> None:
-    last_watermark = read_watermark()
-
-    orders_df = extract_incremental_orders(
+    dataframe = extract_table(
+        config=config,
         last_watermark=last_watermark,
     )
 
-    if orders_df.empty:
-        print("No new or updated orders. Nothing uploaded.")
+    if dataframe.empty:
+        print(
+            f"No records found for {config['name']}. "
+            "Nothing uploaded."
+        )
         return
 
-    parquet_buffer = convert_to_parquet(orders_df)
-    s3_key = upload_to_s3(parquet_buffer)
+    parquet_buffer = convert_to_parquet(dataframe)
+
+    s3_key = upload_to_s3(
+        parquet_buffer=parquet_buffer,
+        table_name=config["name"],
+        s3_prefix=config["s3_prefix"],
+    )
 
     validate_uploaded_file(
         s3_key=s3_key,
-        expected_row_count=len(orders_df),
+        expected_row_count=len(dataframe),
     )
 
-    new_watermark = (
-        pd.to_datetime(orders_df["updated_at"].max())
-        .strftime("%Y-%m-%d %H:%M:%S")
+    if config["load_type"] == "incremental":
+        watermark_column = config["watermark_column"]
+
+        new_watermark = (
+            pd.to_datetime(dataframe[watermark_column].max())
+            .strftime("%Y-%m-%d %H:%M:%S")
+        )
+
+        update_watermark(
+            table_name=config["name"],
+            watermark_key=config["watermark_key"],
+            new_watermark=new_watermark,
+        )
+
+    print(
+        f"{config['load_type']} load for "
+        f"{config['name']} completed successfully."
+    )
+    
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Ingest a configured MySQL table into S3."
     )
 
-    update_watermark(new_watermark)
+    parser.add_argument(
+        "--table",
+        required=True,
+        choices=TABLE_CONFIG.keys(),
+        help="Table to ingest.",
+    )
 
-    print("Incremental orders load to DEV completed successfully.")
+    args = parser.parse_args()
+    config = TABLE_CONFIG[args.table]
+
+    run_table(config)
 
 
 if __name__ == "__main__":
     main()
-
-
-
-
