@@ -44,3 +44,11 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# airflow
+.env
+.env.*
+!.env.example
+airflow/logs/
+airflow/config/
+**/__pycache__/
