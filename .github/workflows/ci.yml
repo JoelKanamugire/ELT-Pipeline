@@ -1,12 +1,13 @@
 name: CI
 
-# Runs on every pull request to main
+# # Runs on pushes to dev and pull requests targeting dev or main
 on:
   push:
     branches:
       - dev
   pull_request:
     branches:
+      - dev
       - main
 
 jobs:
@@ -32,10 +33,12 @@ jobs:
           pip install -r requirements.txt
 
       # Step 4 - Run your tests
-      - name: Run tests
-        run: |
-          pytest tests/
-
+      - name: Run pytest
+        env:
+          ENVIRONMENT: test
+          S3_BUCKET: test-bucket
+        run: python -m pytest tests/ -v
+        
 # Job 2 - Terraform plan for dev
   terraform-plan-dev:
     name: Terraform Plan (dev)
