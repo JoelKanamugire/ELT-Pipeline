@@ -3,11 +3,13 @@ import json
 import os
 from datetime import datetime, timezone
 from io import BytesIO
+from .table_config import TABLE_CONFIG
 
 import boto3
 import pandas as pd
 import pymysql
 from dotenv import load_dotenv
+import argparse
 
 from .table_config import TABLE_CONFIG
 
@@ -192,18 +194,24 @@ def update_watermark(
     new_watermark: str,
 ) -> None:
     s3_client = boto3.client("s3")
-
+    
     watermark_data = {
         "table": table_name,
         "last_successful_watermark": new_watermark,
     }
-
+    
     s3_client.put_object(
         Bucket=S3_BUCKET,
         Key=watermark_key,
         Body=json.dumps(watermark_data, indent=2),
-        ContentType="application/json",
+        ContentType = "application/json",    
     )
+    print(f"Watermark updated to : {new_watermark}")
+    
+    
+    
+def run_table(config: dict) -> None:
+    last_watermark = None
 
     print(
         f"Watermark updated at s3://{S3_BUCKET}/{watermark_key}: "
@@ -282,6 +290,15 @@ def run_table(config: dict) -> None:
         "completed successfully."
     )
 
+    print(
+        f"{config['load_type']} load for "
+        f"{config['name']} completed successfully."
+    )
+    
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Ingest a configured MySQL table into S3."
+    )
 
 def main() -> None:
     parser = argparse.ArgumentParser(
