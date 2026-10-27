@@ -67,7 +67,7 @@ def test_incremental_success(steps):
     steps["update_watermark"].assert_called_once_with(
         table_name=config["name"],
         watermark_key=config["watermark_key"],
-        new_watermark="2026-09-04 12:00:00",
+        new_watermark="2026-09-04 12:00:00.000000",
     )
     
 def test_empty_extraction_uploads_nothing(steps):
