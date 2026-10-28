@@ -3,7 +3,7 @@ import pendulum
 from airflow.sdk import DAG
 from airflow.providers.standard.operators.bash import BashOperator
 
-TABLES = ["orders", "customers", "products"]
+TABLES = ["orders", "customers", "products", "promotions", "order_items", "promotion_usage"]
 
 with DAG(
     dag_id="mysql_to_s3_dev",
